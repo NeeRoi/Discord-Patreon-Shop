@@ -14,7 +14,7 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Initialisiere Konfigurationsdaten
+# Config
 currency_refresh = {
     'Juvie': 2,
     'Sub-Adult': 5,
@@ -56,11 +56,11 @@ patreon_request_channel_id = 1129094520710111282
 error_channel_id = 1129760990360240239
 guild_id = 1129093489670500422
 
-# Setze die Währungsdaten und Kaufhistorie der Benutzer
+#Set the currency data and purchase history of users
 user_currency = {}
 user_purchase_history = {}
 
-# Lade Währungsdaten und Kaufhistorie, falls vorhanden
+#Load currency data and purchase history, if available
 if os.path.isfile('user_currency.json'):
     with open('user_currency.json', 'r') as f:
         user_currency = json.load(f)
@@ -112,32 +112,32 @@ class IngameIDModal(nextcord.ui.Modal):
         super().__init__(title="Ingame-ID eingeben")
         self.ctx = ctx
         self.item = item
-        self.ingame_id = None  # Will hold the Ingame ID entered by the user
+        self.ingame_id = None
 
-        # Add a text input field for the Ingame ID
+        #Add a text input field for the Ingame ID
         self.add_item(nextcord.ui.TextInput(label="Ingame-ID", placeholder="Ingame-ID eingeben", custom_id="ingame_id"))
 
     async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
-        return interaction.user == self.ctx.author  # Only the user who invoked the command can interact with the modal
+        return interaction.user == self.ctx.author  #Only the user who invoked the command can interact with the modal
 
     async def callback(self, interaction: nextcord.Interaction):
-        self.ingame_id = self.values["ingame_id"]  # Get the Ingame ID entered by the user
+        self.ingame_id = self.values["ingame_id"] 
         if self.ingame_id is not None:
-            # The user clicked the confirm button, so proceed with the purchase
+            #The user clicked the confirm button, so proceed with the purchase
             user_purchase_history[self.ctx.user.id][self.item] += 1
             with open('user_purchase_history.json', 'w') as f:
                 json.dump(user_purchase_history, f)
 
-            # Send the request to the Patreon request channel
+            #Send the request to the Patreon request channel
             patreon_request_channel = self.ctx.guild.get_channel(patreon_request_channel_id)
             await patreon_request_channel.send(
                 f"@Staff {self.ctx.user.name} möchte {self.item} kaufen. Seine Ingame-ID ist {self.ingame_id}."
             )
 
-            # Send a confirmation message to the user
+            #Send a confirmation message to the user
             await self.ctx.send(f"Dein Einkauf von {self.item} wurde erfolgreich angefordert. Bitte warte, bis ein Staff-Mitglied deine Anfrage bestätigt.")
         else:
-            # The user clicked the cancel button, so cancel the purchase
+            #The user clicked the cancel button, so cancel the purchase
             await self.ctx.send("Dein Einkauf wurde abgebrochen.")
         
 @bot.slash_command()
@@ -169,7 +169,7 @@ async def shop(ctx, item: str):
         if user_purchase_history[ctx.user.id][item] >= item_limits[user_role][item]:
             return await ctx.send("Du hast die maximale Anzahl von Käufen für diesen Artikel in diesem Monat erreicht!")
 
-        # Open the modal for the user to enter their Ingame ID
+        #Open the modal for the user to enter their Ingame ID
         modal = IngameIDModal(ctx, item)
         await ctx.response.send_modal(modal)
 
