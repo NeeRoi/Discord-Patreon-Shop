@@ -159,7 +159,7 @@ class IngameIDModal(nextcord.ui.Modal):
             user_view.user_message = await interaction.user.send(embed=user_embed, view=user_view)
 
             #Close the modal and send an ephemeral message to the user
-            return await interaction.response.send_message(f"Dein Einkauf von {self.item} wurde erfolgreich angefordert. Deine Ingame-ID ist `{self.ingame_id}`. Bitte warte, bis ein Staff-Mitglied deine Anfrage bestätigt.", ephemeral=True)
+            return await interaction.response.send_message(f"Dein Einkauf von `{self.item}` wurde erfolgreich angefordert. Deine Ingame-ID ist `{self.ingame_id}`. Bitte warte, bis ein Staff-Mitglied deine Anfrage bestätigt.", ephemeral=True, delete_after=30)
         else:
             #Send an ephemeral message to the user indicating that the Ingame ID is invalid
             return await interaction.response.send_message("Ungültige Ingame-ID. Bitte geben Sie eine 3-4-stellige Zahl ein.", ephemeral=True, delete_after=30)
@@ -200,6 +200,23 @@ class UserView(nextcord.ui.View):
         new_embed = Embed(title="Bestellung storniert", description=f"Du hast deinen Einkauf von `{self.item}` storniert.")  #Create a new embed with the cancellation message
         await self.user_message.edit(embed=new_embed)  #Edit the original message's embed
         await interaction.response.send_message(f"Successfully cancelled the patreon shop request for {self.user.mention}, for {self.item}.")
+
+#ShopView for buttons
+class ShopView(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @nextcord.ui.button(label="Reskin", style=nextcord.ButtonStyle.primary, custom_id="reskin_button")
+    async def reskin_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        await shop(interaction, "Reskin")
+
+    @nextcord.ui.button(label="Regender", style=nextcord.ButtonStyle.primary, custom_id="regender_button")
+    async def regender_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        await shop(interaction, "Regender")
+
+    @nextcord.ui.button(label="Retalent", style=nextcord.ButtonStyle.primary, custom_id="retalent_button")
+    async def retalent_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        await shop(interaction, "Retalent")
 
 #/shop Command      
 @bot.slash_command()
@@ -320,14 +337,14 @@ async def viewpatreonadmin(interaction: nextcord.Interaction, member_id: nextcor
     else:
         await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True, delete_after=30)
 
-#showpatreon
+#viewpatreon
 @bot.slash_command(guild_ids=[guild_id])
-async def showpatreon(interaction: nextcord.Interaction):
+async def viewpatreon(interaction: nextcord.Interaction):
     if str(interaction.user.id) in user_currency:
         #Retrieve the role name and details
         user_role = [role for role in interaction.user.roles if str(role.id) in role_details]
         user_role_details = role_details[str(user_role[0].id)] if user_role else None
-
+        
         #Get the currency and purchase history
         currency = user_currency[str(interaction.user.id)]
         purchase_history = user_purchase_history.get(str(interaction.user.id), {})
@@ -339,20 +356,33 @@ async def showpatreon(interaction: nextcord.Interaction):
         remaining_purchases_text = "\n".join(f"{item}: `{count}`" for item, count in remaining_purchases.items())
 
         #Create the embed message
-        embed = nextcord.Embed(title="Your Patreon Status", description=f"{interaction.user.mention} `{user_role_details['name']}`\n\nCurrency: `{currency}`\n\nRemaining Purchases:\n{remaining_purchases_text}")
+        embed = nextcord.Embed(title="Patreon Status", description=f"{interaction.user.mention} `{user_role_details['name']}`\n\nCurrency: `{currency}`\n\nRemaining Purchases:\n{remaining_purchases_text}")
         await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=30)
     else:
-        await interaction.response.send_message("You do not have any currency data yet.", ephemeral=True, delete_after=30)
+        await interaction.response.send_message("You do not have any Patreon currency or limits.", ephemeral=True, delete_after=30)
 
-#Starts the bot
+#Event Ready
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
+    print(f'We have logged in as {bot.user}')
+    patreon_shop_channel = bot.get_channel(patreon_shop_channel_id)
+    await patreon_shop_channel.purge(limit=None)
 
-#Error Handling
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.send('Ungültiger Befehl.')
+    # Load the shop message from the JSON file
+    with open('shop_message.json', 'r') as file:
+        data = json.load(file)
+
+    embed_title = data['title']
+    shop_message = data['message']
+    footnote = data['footnote']
+
+    embed = nextcord.Embed(title=embed_title, color=0xFFD700)  # Gold gelb
+    embed.add_field(name="Welcome to the Deep Abyss Patreon Shop!", value=shop_message, inline=False)
+    embed.set_footer(text=footnote)
+
+    await patreon_shop_channel.send(embed=embed, view=ShopView())
+
+    reset_currency.start()
+    reset_purchase_history.start()
 
 bot.run(TOKEN)
