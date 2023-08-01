@@ -1,6 +1,7 @@
 # Discord-Patreon-Shop
 
 Overall Summary
+
 This Discord bot is a comprehensive and feature-rich application that serves a Patreon community. Key functionalities include:
 
 Currency Management: Tracking user currency and purchase history, with periodic resets.
